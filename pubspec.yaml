@@ -1,0 +1,57 @@
+name: churchmate
+description: "ChurchMate — Faith, Library, and Finance management for church youth organizations."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.4
+  firebase_messaging: ^15.1.3
+  cloud_functions: ^5.1.3
+
+  # State management
+  provider: ^6.1.2
+
+  # QR codes
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^5.2.3
+
+  # Reports (PDF/CSV export)
+  pdf: ^3.11.1
+  csv: ^6.0.0
+  path_provider: ^2.1.4
+  share_plus: ^10.0.2
+
+  # Utilities
+  intl: ^0.19.0
+  image_picker: ^1.1.2
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+
+# NOTE FOR STUDENTS:
+# This file is a starting point — after "flutter create", replace the generated
+# pubspec.yaml's `dependencies:` section with the one above, then run
+# `flutter pub get`. Version numbers may need small bumps depending on your
+# installed Flutter SDK version — if `flutter pub get` complains, run
+# `flutter pub upgrade --major-versions` once to resolve compatible versions.
