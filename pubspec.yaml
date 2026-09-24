@@ -22,7 +22,6 @@ dependencies:
 
   # QR codes
   qr_flutter: ^4.1.0
-  mobile_scanner: ^5.2.3
 
   # Reports (PDF/CSV export)
   pdf: ^3.11.1
@@ -32,6 +31,7 @@ dependencies:
 
   # Utilities
   intl: ^0.19.0
+  google_fonts: ^6.2.1
   image_picker: ^1.1.2
 
   cupertino_icons: ^1.0.8
