@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
+import '../features/faith/screens/qr_display_screen.dart';
 
 /// Named routes for the whole app. Add one line per new screen as you
 /// build features — keeps navigation centralized instead of scattered
@@ -10,6 +11,7 @@ class AppRoutes {
   static const dashboard = '/dashboard';
 
   static Map<String, WidgetBuilder> routes = {
+    '/qr-display': (context) => const QrDisplayScreen(),
     login: (context) => const LoginScreen(),
     dashboard: (context) => const DashboardScreen(),
     // faith: (context) => const EventListScreen(),
