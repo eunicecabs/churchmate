@@ -10,6 +10,7 @@ build/
 *.ipr
 *.iws
 .idea/
+*.log
 
 # Android
 **/android/**/gradle-wrapper.jar
