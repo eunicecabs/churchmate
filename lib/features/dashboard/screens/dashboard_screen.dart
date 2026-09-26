@@ -342,8 +342,8 @@ class _BottomNav extends StatelessWidget {
             onTap: () => Navigator.pushNamed(context, '/qr-display'),
             child: _scanButton(),
           ),
-          _navItem(context, Icons.menu_book_outlined, 'Library', false, null),
-          _navItem(context, Icons.volunteer_activism_outlined, 'Giving', false, null),
+          _navItem(context, Icons.menu_book_outlined, 'Library', false, '/library'),
+          _navItem(context, Icons.volunteer_activism_outlined, 'Giving', false, '/finance'),
         ],
       ),
     );

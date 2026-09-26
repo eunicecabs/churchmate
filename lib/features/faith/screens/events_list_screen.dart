@@ -307,8 +307,8 @@ class _EventsListScreenState extends State<EventsListScreen> {
               child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 20),
             ),
           ),
-          _navItem(context, Icons.menu_book_outlined, 'Library', false, null),
-          _navItem(context, Icons.volunteer_activism_outlined, 'Giving', false, null),
+          _navItem(context, Icons.menu_book_outlined, 'Library', false, '/library'),
+          _navItem(context, Icons.volunteer_activism_outlined, 'Giving', false, '/finance'),
         ],
       ),
     );
