@@ -336,23 +336,33 @@ class _BottomNav extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _navItem(Icons.home, 'Home', true),
-          _navItem(Icons.event_outlined, 'Events', false),
-          _scanButton(),
-          _navItem(Icons.menu_book_outlined, 'Library', false),
-          _navItem(Icons.volunteer_activism_outlined, 'Giving', false),
+          _navItem(context, Icons.home, 'Home', true, '/dashboard'),
+          _navItem(context, Icons.event_outlined, 'Events', false, '/events'),
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/qr-display'),
+            child: _scanButton(),
+          ),
+          _navItem(context, Icons.menu_book_outlined, 'Library', false, null),
+          _navItem(context, Icons.volunteer_activism_outlined, 'Giving', false, null),
         ],
       ),
     );
   }
 
-  Widget _navItem(IconData icon, String label, bool active) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: active ? AppColors.primary900 : AppColors.neutralMuted, size: 22),
-        Text(label, style: TextStyle(fontSize: 10, color: active ? AppColors.primary900 : AppColors.neutralMuted)),
-      ],
+  Widget _navItem(BuildContext context, IconData icon, String label, bool active, String? route) {
+    return InkWell(
+      onTap: () {
+        if (route != null && !active) {
+          Navigator.pushReplacementNamed(context, route);
+        }
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: active ? AppColors.primary900 : AppColors.neutralMuted, size: 22),
+          Text(label, style: TextStyle(fontSize: 10, color: active ? AppColors.primary900 : AppColors.neutralMuted)),
+        ],
+      ),
     );
   }
 
