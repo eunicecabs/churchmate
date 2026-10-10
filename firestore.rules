@@ -1,0 +1,143 @@
+rules_version = '2';
+
+// ChurchMate Firestore security rules.
+//
+// Role model: every signed-in user has a `users/{uid}.role` field of either
+// "member" (Youth Member) or "leader" (Youth Leader) - see
+// lib/core/constants/roles.dart. Elders/Members who carry a printed QR have NO
+// Firebase account; they exist only as documents in `qrRegistry`.
+//
+// NOTE: helper functions must live INSIDE the `service` block.
+
+service cloud.firestore {
+
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(uid) {
+    return isSignedIn() && request.auth.uid == uid;
+  }
+
+  function myRole() {
+    return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+  }
+
+  function isLeader() {
+    return isSignedIn() && myRole() == 'leader';
+  }
+
+  function scannerRoleLabel() {
+    return isLeader() ? 'Youth Leader' : 'Youth Member';
+  }
+
+  match /databases/{database}/documents {
+
+    // users/{uid} - every signed-in user can read profiles (needed to show
+    // names on events/attendance), but can only write their own document.
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(uid)
+                    && (request.resource.data.role == 'member' || request.resource.data.role == 'leader');
+      // Own profile only, and the role can never be changed afterwards
+      // (a member cannot promote themselves to leader).
+      allow update: if isOwner(uid)
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    // events/{eventId} - everyone signed in can read; only leaders write.
+    match /events/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if isLeader() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isLeader();
+    }
+
+    // books/{bookId} - same pattern as events.
+    match /books/{bookId} {
+      allow read: if isSignedIn();
+      allow create: if isLeader() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isLeader();
+    }
+
+    // borrowRequests/{requestId}
+    match /borrowRequests/{requestId} {
+      allow read: if isLeader() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isLeader();
+    }
+
+    // transactions/{transactionId} - Youth Leaders only.
+    match /transactions/{transactionId} {
+      allow read: if isLeader();
+      allow create: if isLeader() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isLeader();
+    }
+
+    // attendance/{attendanceId} - event self check-in (unchanged).
+    match /attendance/{attendanceId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && attendanceId == request.resource.data.eventId + '_' + request.auth.uid;
+      allow update, delete: if isLeader();
+    }
+
+    // ---------------- Elder / Member QR system ----------------
+
+    // qrRegistry/{qrId} - the registered Elders/Members (doc id == QR ID).
+    // Youth Members may look up ONE record by id (needed to show the scan
+    // result) but cannot list/browse the registry. Only leaders manage it.
+    match /qrRegistry/{qrId} {
+      allow get: if isSignedIn();
+      allow list: if isLeader();
+      allow create: if isLeader()
+                    && qrId.matches('^(ELD|MEM)-[0-9]{4,}$')
+                    && request.resource.data.qrId == qrId
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.role == (qrId.matches('ELD-.*') ? 'Elder' : 'Member')
+                    && request.resource.data.active == true;
+      allow update: if isLeader()
+                    && request.resource.data.qrId == resource.data.qrId
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if isLeader();
+    }
+
+    // counters/qrRegistry - sequence numbers for ELD-#### / MEM-####.
+    match /counters/{counterId} {
+      allow read, write: if isLeader();
+    }
+
+    // scanRecords/{qrId_sessionKey} - permanent scan history.
+    // Any signed-in Youth Member/Leader can CREATE one (as themselves, for a
+    // real, active registry entry). Only leaders can READ. Nobody can edit
+    // or delete, so a duplicate for the same session is impossible.
+    match /scanRecords/{scanId} {
+      allow read: if isLeader();
+      allow create: if isSignedIn()
+                    && request.resource.data.scannedByUid == request.auth.uid
+                    && request.resource.data.scannedByRole == scannerRoleLabel()
+                    && scanId == request.resource.data.qrId + '_' + request.resource.data.sessionKey
+                    && exists(/databases/$(database)/documents/qrRegistry/$(request.resource.data.qrId))
+                    && get(/databases/$(database)/documents/qrRegistry/$(request.resource.data.qrId)).data.active == true
+                    && get(/databases/$(database)/documents/qrRegistry/$(request.resource.data.qrId)).data.name == request.resource.data.scannedPersonName
+                    && get(/databases/$(database)/documents/qrRegistry/$(request.resource.data.qrId)).data.role == request.resource.data.scannedPersonRole;
+      allow update, delete: if false;
+    }
+
+    // scanMarkers/{qrId_sessionKey} - tiny "already scanned at <time>" flag so a
+    // Youth Member can be told about a duplicate WITHOUT reading scan history.
+    // Holds only qrId, time and eventId - no names and no scanner identity - so
+    // any signed-in user may read them (used for the event's Live Attendance
+    // COUNT and the "already scanned" message).
+    match /scanMarkers/{scanId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && scanId.matches('^(ELD|MEM)-[0-9]{4,}_.+$')
+                    && scanId.split('_')[0] == request.resource.data.qrId;
+      allow update, delete: if false;
+    }
+  }
+}
