@@ -77,9 +77,10 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       _goHome();
     } on FirebaseAuthException catch (e) {
-      _showError(e.message ?? 'Something went wrong. Please try again.');
-    } catch (_) {
-      _showError('Something went wrong. Please check your connection and try again.');
+      _showError(e.message ?? 'Something went wrong (${e.code}). Please try again.');
+    } catch (e) {
+      debugPrint('Sign-in error: $e');
+      _showError('Something went wrong: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -93,9 +94,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user == null) return; // user cancelled the picker
       _goHome();
     } on FirebaseAuthException catch (e) {
-      _showError(e.message ?? 'Google sign-in failed. Please try again.');
-    } catch (_) {
-      _showError('Google sign-in failed. Please check your connection and try again.');
+      _showError(e.message ?? 'Google sign-in failed (${e.code}). Please try again.');
+    } catch (e) {
+      debugPrint('Google sign-in error: $e');
+      _showError('Google sign-in failed: $e');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../app/theme.dart';
 import '../../../core/services/auth_service.dart';
+import '../models/fund_summary.dart';
 import '../models/transaction_model.dart';
 
 const List<String> kIncomeCategories = ['Tithes', 'Offerings', 'Donations', 'Other Income'];
@@ -102,6 +103,15 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
     }
 
     final uid = context.read<AuthService>().currentUser?.id ?? '';
+
+    // Expense bigger than the money on hand? The record is still saved (the
+    // books must stay accurate) but the leader must confirm, and the app will
+    // show Available = 0 plus the shortage - never a negative balance.
+    if (_type == TransactionType.expense) {
+      final proceed = await _confirmIfInsufficient(amount);
+      if (!proceed || !mounted) return;
+    }
+
     setState(() => _isSaving = true);
     try {
       final data = TransactionModel(
@@ -137,6 +147,47 @@ class _TransactionFormScreenState extends State<TransactionFormScreen> {
           .showSnackBar(const SnackBar(content: Text('Could not save transaction. Please try again.')));
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  /// Returns true when the expense can be saved (funds are enough, or the
+  /// user confirmed saving it anyway).
+  Future<bool> _confirmIfInsufficient(double amount) async {
+    try {
+      final snap = await _db.collection('transactions').get();
+      final others = snap.docs
+          .where((d) => d.id != _transactionId)
+          .map((d) => TransactionModel.fromMap(d.id, d.data()));
+      final before = FundSummary.from(others);
+      final after = FundSummary(income: before.income, expenses: before.expenses + amount);
+      if (!after.isInsufficient) return true;
+      if (!mounted) return false;
+      final currency = NumberFormat.currency(locale: 'en_PH', symbol: '₱');
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.container)),
+          title: const Text('Insufficient Funds / Kapos sa Pera'),
+          content: Text(
+            'Available funds: ${currency.format(before.available)}\n'
+            'This expense: ${currency.format(amount)}\n'
+            'Shortage: ${currency.format(after.shortage)}\n\n'
+            'The expense will still be recorded, and the available funds will show ₱0 with the shortage.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.statusAlert),
+              child: const Text('Record Anyway'),
+            ),
+          ],
+        ),
+      );
+      return ok == true;
+    } catch (_) {
+      // Could not check the balance (e.g. offline) - do not block the save.
+      return true;
     }
   }
 

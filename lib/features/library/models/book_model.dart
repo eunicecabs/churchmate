@@ -10,7 +10,6 @@ class BookModel {
   final String? description;
   final String? imageUrl;
   final String? coverBase64; // fallback cover stored on the doc if Storage upload fails
-  final String? isbn;
   final int? publicationYear;
   final String createdBy;
   final DateTime? createdAt;
@@ -25,7 +24,6 @@ class BookModel {
     this.description,
     this.imageUrl,
     this.coverBase64,
-    this.isbn,
     this.publicationYear,
     required this.createdBy,
     this.createdAt,
@@ -42,7 +40,6 @@ class BookModel {
       description: data['description'] as String?,
       imageUrl: data['imageUrl'] as String?,
       coverBase64: data['coverBase64'] as String?,
-      isbn: data['isbn'] as String?,
       publicationYear: (data['publicationYear'] as num?)?.toInt(),
       createdBy: data['createdBy'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
@@ -59,7 +56,6 @@ class BookModel {
       if (description != null) 'description': description,
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (coverBase64 != null) 'coverBase64': coverBase64,
-      if (isbn != null) 'isbn': isbn,
       if (publicationYear != null) 'publicationYear': publicationYear,
       'createdBy': createdBy,
     };

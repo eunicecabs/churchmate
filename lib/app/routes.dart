@@ -9,7 +9,6 @@ import '../features/faith/screens/event_form_screen.dart';
 import '../features/faith/screens/attendance_scanner_screen.dart';
 import '../features/qr/screens/qr_create_screen.dart';
 import '../features/qr/screens/qr_management_screen.dart';
-import '../features/qr/screens/scan_records_screen.dart';
 import '../features/library/screens/library_catalog_screen.dart';
 import '../features/library/screens/book_detail_screen.dart';
 import '../features/library/screens/book_form_screen.dart';
@@ -33,7 +32,6 @@ class AppRoutes {
   static const String transactionForm = '/transaction-form';
   static const String qrCreate = '/qr-create';
   static const String qrManagement = '/qr-management';
-  static const String scanRecords = '/scan-records';
 
   static Map<String, WidgetBuilder> routes = {
     login: (context) => const LoginScreen(),
@@ -51,6 +49,5 @@ class AppRoutes {
     transactionForm: (context) => const LeaderOnly(child: TransactionFormScreen()),
     qrCreate: (context) => const LeaderOnly(child: QrCreateScreen()),
     qrManagement: (context) => const LeaderOnly(child: QrManagementScreen()),
-    scanRecords: (context) => const LeaderOnly(child: ScanRecordsScreen()),
   };
 }

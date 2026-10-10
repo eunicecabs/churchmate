@@ -37,7 +37,6 @@ class _BookFormScreenState extends State<BookFormScreen> {
   final _authorController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _descriptionController = TextEditingController();
-  final _isbnController = TextEditingController();
   final _yearController = TextEditingController();
 
   String _category = kBookCategories.first;
@@ -70,7 +69,6 @@ class _BookFormScreenState extends State<BookFormScreen> {
       _authorController.text = book.author;
       _quantityController.text = book.availableQuantity.toString();
       _descriptionController.text = book.description ?? '';
-      _isbnController.text = book.isbn ?? '';
       _yearController.text = book.publicationYear?.toString() ?? '';
       _category = kBookCategories.contains(book.category) ? book.category : kBookCategories.last;
       _existingImageUrl = book.imageUrl;
@@ -84,7 +82,6 @@ class _BookFormScreenState extends State<BookFormScreen> {
     _authorController.dispose();
     _quantityController.dispose();
     _descriptionController.dispose();
-    _isbnController.dispose();
     _yearController.dispose();
     super.dispose();
   }
@@ -153,7 +150,6 @@ class _BookFormScreenState extends State<BookFormScreen> {
         category: _category,
         availableQuantity: quantity,
         description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
-        isbn: _isbnController.text.trim().isEmpty ? null : _isbnController.text.trim(),
         publicationYear: int.tryParse(_yearController.text.trim()),
         imageUrl: coverUrl,
         coverBase64: coverBase64,
@@ -277,26 +273,12 @@ class _BookFormScreenState extends State<BookFormScreen> {
                   decoration: appInputDecoration(label: 'Short synopsis...')),
               const SizedBox(height: AppSpacing.sm),
 
-              Row(children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('ISBN (optional)', style: AppTextStyles.labelMd),
-                    const SizedBox(height: 6),
-                    TextField(controller: _isbnController, decoration: appInputDecoration(label: 'ISBN')),
-                  ]),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Year (optional)', style: AppTextStyles.labelMd),
-                    const SizedBox(height: 6),
-                    TextField(
-                        controller: _yearController,
-                        keyboardType: TextInputType.number,
-                        decoration: appInputDecoration(label: 'e.g. 2020')),
-                  ]),
-                ),
-              ]),
+              Text('Year (optional)', style: AppTextStyles.labelMd),
+              const SizedBox(height: 6),
+              TextField(
+                  controller: _yearController,
+                  keyboardType: TextInputType.number,
+                  decoration: appInputDecoration(label: 'e.g. 2020')),
               const SizedBox(height: AppSpacing.lg),
 
               ElevatedButton.icon(

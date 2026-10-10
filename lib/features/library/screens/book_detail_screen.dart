@@ -111,13 +111,8 @@ class BookDetailScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Center(child: Text(book.title, style: AppTextStyles.headlineXlMobile, textAlign: TextAlign.center)),
                   Center(child: Text(book.author, style: AppTextStyles.bodyMd.copyWith(color: AppColors.primary700))),
-                  if (book.isbn != null || book.publicationYear != null)
-                    Center(
-                      child: Text(
-                        [if (book.isbn != null) 'ISBN ${book.isbn}', if (book.publicationYear != null) '${book.publicationYear}'].join(' • '),
-                        style: AppTextStyles.bodySm,
-                      ),
-                    ),
+                  if (book.publicationYear != null)
+                    Center(child: Text('${book.publicationYear}', style: AppTextStyles.bodySm)),
                   const SizedBox(height: AppSpacing.md),
 
                   Container(

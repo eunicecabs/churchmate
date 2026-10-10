@@ -7,9 +7,25 @@ import '../../../app/routes.dart';
 import '../../../core/constants/roles.dart';
 import '../../../core/services/auth_service.dart';
 import '../models/event_model.dart';
+import '../services/attendance_export_service.dart';
 
 class EventDetailScreen extends StatelessWidget {
   const EventDetailScreen({super.key});
+
+  Future<void> _export(BuildContext context, EventModel event, {required bool pdf}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(SnackBar(content: Text(pdf ? 'Preparing PDF...' : 'Preparing CSV...')));
+    try {
+      final service = AttendanceExportService();
+      if (pdf) {
+        await service.exportPdf(event);
+      } else {
+        await service.exportCsv(event);
+      }
+    } catch (_) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not export the ${pdf ? 'PDF' : 'CSV'}. Please try again.')));
+    }
+  }
 
   Future<void> _confirmDelete(BuildContext context, String eventId) async {
     final confirmed = await showDialog<bool>(
@@ -159,6 +175,28 @@ class EventDetailScreen extends StatelessWidget {
                                 style: AppButtonStyles.primary,
                               ),
                             ),
+                            if (isLeader) ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              Row(children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _export(context, event, pdf: true),
+                                    icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
+                                    label: const Text('Export to PDF'),
+                                    style: AppButtonStyles.secondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _export(context, event, pdf: false),
+                                    icon: const Icon(Icons.table_chart_outlined, size: 16),
+                                    label: const Text('Export to CSV'),
+                                    style: AppButtonStyles.secondary,
+                                  ),
+                                ),
+                              ]),
+                            ],
                             if (isLeader) _attendeeList(event.id),
                           ],
                         ),

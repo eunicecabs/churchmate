@@ -4,10 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../app/theme.dart';
 import '../../../app/routes.dart';
+import '../../../core/constants/daily_verses.dart';
 import '../../../core/constants/roles.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../shared/widgets/book_cover.dart';
 import '../../faith/models/event_model.dart';
+import '../../finance/models/fund_summary.dart';
 import '../../finance/models/transaction_model.dart';
 import '../../library/models/book_model.dart';
 import '../../library/widgets/borrow_button.dart';
@@ -20,6 +22,8 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = context.watch<AuthService>().currentUser;
     final isLeader = user?.role == UserRole.leader;
+    // Changes automatically every day (see core/constants/daily_verses.dart).
+    final verse = verseForDate();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -101,11 +105,11 @@ class DashboardScreen extends StatelessWidget {
                     ]),
                     const SizedBox(height: 8),
                     Text(
-                      '"Don\'t let anyone look down on you because you are young, but set an example for the believers in speech, in conduct, in love, in faith and in purity."',
+                      '"${verse.text}"',
                       style: AppTextStyles.bodyMd.copyWith(fontStyle: FontStyle.italic),
                     ),
                     const SizedBox(height: 8),
-                    Text('1 Timothy 4:12', style: AppTextStyles.labelMd.copyWith(color: AppColors.primary700)),
+                    Text(verse.reference, style: AppTextStyles.labelMd.copyWith(color: AppColors.primary700)),
                   ],
                 ),
               ),
@@ -114,8 +118,9 @@ class DashboardScreen extends StatelessWidget {
               // Quick actions
               Text('QUICK MINISTRY ACTIONS', style: AppTextStyles.labelSm),
               const SizedBox(height: AppSpacing.sm),
+              // One single row. Items share the width equally so all fit on small phones.
               Row(
-                mainAxisAlignment: isLeader ? MainAxisAlignment.spaceBetween : MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _quickAction(context, Icons.menu_book, 'Library', AppColors.primary300.withValues(alpha: 0.4),
                       AppColors.primary900, AppRoutes.library),
@@ -125,23 +130,15 @@ class DashboardScreen extends StatelessWidget {
                         AppColors.accent500, AppRoutes.finance),
                   _quickAction(context, Icons.event, 'Events', AppColors.neutralMuted.withValues(alpha: 0.15),
                       AppColors.neutralDark, AppRoutes.events),
+                  // QR tools for Youth Leaders only (Elder/Member QR registry).
+                  if (isLeader) ...[
+                    _quickAction(context, Icons.qr_code_2, 'Create\nQR', AppColors.primary300.withValues(alpha: 0.4),
+                        AppColors.primary900, AppRoutes.qrCreate),
+                    _quickAction(context, Icons.badge_outlined, 'Manage\nQR', AppColors.primary300.withValues(alpha: 0.4),
+                        AppColors.primary900, AppRoutes.qrManagement),
+                  ],
                 ],
               ),
-              // QR tools for Youth Leaders only (Elder/Member QR registry + scan history).
-              if (isLeader) ...[
-                const SizedBox(height: AppSpacing.md),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _quickAction(context, Icons.qr_code_2, 'Create Elder/\nMember QR', AppColors.primary300.withValues(alpha: 0.4),
-                        AppColors.primary900, AppRoutes.qrCreate),
-                    _quickAction(context, Icons.badge_outlined, 'QR\nManagement', AppColors.primary300.withValues(alpha: 0.4),
-                        AppColors.primary900, AppRoutes.qrManagement),
-                    _quickAction(context, Icons.fact_check_outlined, 'Scan\nRecords', AppColors.primary300.withValues(alpha: 0.4),
-                        AppColors.primary900, AppRoutes.scanRecords),
-                  ],
-                ),
-              ],
               const SizedBox(height: AppSpacing.lg),
 
               // Ministry Overview
@@ -180,19 +177,25 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _quickAction(BuildContext context, IconData icon, String label, Color bg, Color fg, String route) {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, route),
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.container)),
-            child: Icon(icon, color: fg),
-          ),
-          const SizedBox(height: 6),
-          Text(label, textAlign: TextAlign.center, style: AppTextStyles.bodySm),
-        ],
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => Navigator.pushNamed(context, route),
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.container)),
+              child: Icon(icon, color: fg),
+            ),
+            const SizedBox(height: 6),
+            Text(label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                style: AppTextStyles.bodySm.copyWith(fontSize: 11.5, height: 1.2)),
+          ],
+        ),
       ),
     );
   }
@@ -336,7 +339,14 @@ class _LibrarySummaryCard extends StatelessWidget {
             children: [
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 Text('Library', style: AppTextStyles.headlineMd),
-                Text('Browse →', style: AppTextStyles.bodySm.copyWith(color: AppColors.primary700)),
+                // Browse -> existing Library page.
+                InkWell(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.library),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    child: Text('Browse →', style: AppTextStyles.bodySm.copyWith(color: AppColors.primary700)),
+                  ),
+                ),
               ]),
               const SizedBox(height: AppSpacing.sm),
               if (books.isEmpty)
@@ -363,9 +373,7 @@ class _FundSummaryCard extends StatelessWidget {
       builder: (context, snapshot) {
         final transactions =
             snapshot.data?.docs.map((d) => TransactionModel.fromMap(d.id, d.data())).toList() ?? [];
-        final income = transactions.where((t) => t.isIncome).fold<double>(0, (s, t) => s + t.amount);
-        final expenses = transactions.where((t) => !t.isIncome).fold<double>(0, (s, t) => s + t.amount);
-        final balance = income - expenses;
+        final fund = FundSummary.from(transactions);
         final currency = NumberFormat.currency(locale: 'en_PH', symbol: '₱');
 
         return Container(
@@ -380,11 +388,29 @@ class _FundSummaryCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text('Youth Ministry Fund', style: AppTextStyles.headlineMd),
                 ]),
-                Text('Ledger ↗', style: AppTextStyles.bodySm.copyWith(color: AppColors.primary700)),
+                // Ledger -> existing Giving page.
+                InkWell(
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.finance),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    child: Text('Ledger ↗', style: AppTextStyles.bodySm.copyWith(color: AppColors.primary700)),
+                  ),
+                ),
               ]),
               const SizedBox(height: AppSpacing.sm),
-              Text('CURRENT BALANCE', style: AppTextStyles.labelSm),
-              Text(currency.format(balance), style: AppTextStyles.headlineXlMobile),
+              Text('AVAILABLE FUNDS', style: AppTextStyles.labelSm),
+              Text(currency.format(fund.available), style: AppTextStyles.headlineXlMobile),
+              if (fund.isInsufficient) ...[
+                const SizedBox(height: 4),
+                Row(children: [
+                  const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.statusAlert),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text('Insufficient Funds / Kapos sa Pera • Shortage ${currency.format(fund.shortage)}',
+                        style: AppTextStyles.bodySm.copyWith(color: AppColors.statusAlert)),
+                  ),
+                ]),
+              ],
               if (transactions.isEmpty) ...[
                 const SizedBox(height: 4),
                 Text('No transactions yet.', style: AppTextStyles.bodySm),

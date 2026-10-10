@@ -6,6 +6,7 @@ import '../../../app/theme.dart';
 import '../../../app/routes.dart';
 import '../../../core/constants/roles.dart';
 import '../../../core/services/auth_service.dart';
+import '../models/fund_summary.dart';
 import '../models/transaction_model.dart';
 
 final _currency = NumberFormat.currency(locale: 'en_PH', symbol: '₱');
@@ -53,9 +54,11 @@ class FinanceScreen extends StatelessWidget {
                 .toList()
               ..sort((a, b) => b.date.compareTo(a.date));
 
-            final income = transactions.where((t) => t.isIncome).fold<double>(0, (s, t) => s + t.amount);
-            final expenses = transactions.where((t) => !t.isIncome).fold<double>(0, (s, t) => s + t.amount);
-            final balance = income - expenses;
+            // Available funds can never go below zero; any overspend is
+            // reported as a shortage while the records themselves stay intact.
+            final fund = FundSummary.from(transactions);
+            final income = fund.income;
+            final expenses = fund.expenses;
 
             return CustomScrollView(
               slivers: [
@@ -85,8 +88,8 @@ class FinanceScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('CURRENT BALANCE', style: AppTextStyles.labelSm.copyWith(color: Colors.white70)),
-                              Text(_currency.format(balance),
+                              Text('AVAILABLE FUNDS', style: AppTextStyles.labelSm.copyWith(color: Colors.white70)),
+                              Text(_currency.format(fund.available),
                                   style: AppTextStyles.headlineXlMobile.copyWith(color: Colors.white, fontSize: 32)),
                               const SizedBox(height: AppSpacing.sm),
                               Row(children: [
@@ -94,6 +97,10 @@ class FinanceScreen extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 Expanded(child: _statChip('Total Expenses', expenses, Icons.arrow_upward, AppColors.statusAlert)),
                               ]),
+                              if (fund.isInsufficient) ...[
+                                const SizedBox(height: AppSpacing.sm),
+                                _shortageBanner(fund),
+                              ],
                             ],
                           ),
                         ),
@@ -148,6 +155,34 @@ class FinanceScreen extends StatelessWidget {
         label: const Text('Add Transaction', style: TextStyle(color: Colors.white)),
       ),
       bottomNavigationBar: _bottomNav(context),
+    );
+  }
+
+  Widget _shortageBanner(FundSummary fund) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.statusAlert.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(AppRadius.base),
+        border: Border.all(color: AppColors.statusAlert.withValues(alpha: 0.6)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text('Status: Insufficient Funds / Kapos sa Pera',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+            ),
+          ]),
+          const SizedBox(height: 4),
+          Text('Shortage: ${_currency.format(fund.shortage)}',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 

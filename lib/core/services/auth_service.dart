@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../shared/models/app_user.dart';
@@ -54,6 +55,12 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
         try {
           _currentUser = await _loadProfile(user.uid);
+          if (_currentUser == null && !_pendingAuth) {
+            // Signed in to Firebase Auth but no users/{uid} profile exists
+            // (e.g. an earlier sign-in failed halfway). Clear the leftover
+            // session so the next attempt starts clean.
+            await _signOutEverywhere();
+          }
         } catch (_) {
           _currentUser = null;
         }
@@ -61,6 +68,15 @@ class AuthService extends ChangeNotifier {
       }
       notifyListeners();
     });
+  }
+
+  Future<void> _signOutEverywhere() async {
+    try {
+      await _auth.signOut();
+    } catch (_) {}
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
   }
 
   Future<AppUser?> _loadProfile(String uid) async {
@@ -170,7 +186,20 @@ class AuthService extends ChangeNotifier {
     _pendingAuth = true;
     notifyListeners();
     try {
-      final googleUser = await _googleSignIn.signIn();
+      // Clear any cached Google account so the account picker always opens.
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+
+      final GoogleSignInAccount? googleUser;
+      try {
+        googleUser = await _googleSignIn.signIn();
+      } on PlatformException catch (e) {
+        throw FirebaseAuthException(
+          code: 'google-sign-in-failed',
+          message: _googlePlatformMessage(e),
+        );
+      }
       if (googleUser == null) return null; // user cancelled the picker
 
       final googleAuth = await googleUser.authentication;
@@ -183,41 +212,68 @@ class AuthService extends ChangeNotifier {
       final fbUser = userCredential.user!;
       final uid = fbUser.uid;
 
-      final existing = await _db.collection('users').doc(uid).get();
       AppUser user;
-      if (existing.exists) {
-        user = AppUser.fromMap(uid, existing.data()!);
-        if (user.role != role) {
-          await _auth.signOut();
-          await _googleSignIn.signOut();
-          throw FirebaseAuthException(
-            code: 'wrong-role',
-            message: _wrongRoleMessage(user.role),
+      try {
+        final existing = await _db.collection('users').doc(uid).get();
+        if (existing.exists) {
+          user = AppUser.fromMap(uid, existing.data()!);
+          if (user.role != role) {
+            await _signOutEverywhere();
+            throw FirebaseAuthException(
+              code: 'wrong-role',
+              message: _wrongRoleMessage(user.role),
+            );
+          }
+        } else {
+          user = AppUser(
+            id: uid,
+            fullName: fbUser.displayName ?? googleUser.displayName ?? 'Google User',
+            email: fbUser.email ?? googleUser.email,
+            role: role,
+            photoUrl: fbUser.photoURL ?? googleUser.photoUrl,
+            authProvider: 'google.com',
           );
+          await _db.collection('users').doc(uid).set({
+            ...user.toMap(),
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
         }
-      } else {
-        user = AppUser(
-          id: uid,
-          fullName: fbUser.displayName ?? googleUser.displayName ?? 'Google User',
-          email: fbUser.email ?? googleUser.email,
-          role: role,
-          photoUrl: fbUser.photoURL ?? googleUser.photoUrl,
-          authProvider: 'google.com',
+      } on FirebaseAuthException {
+        rethrow;
+      } on FirebaseException catch (e) {
+        // Firestore problem (database not created yet, rules not deployed...).
+        await _signOutEverywhere();
+        throw FirebaseAuthException(
+          code: 'profile-error',
+          message: 'Signed in with Google, but the profile could not be saved to Firestore '
+              '(${e.code}). Make sure the Firestore database exists and firestore.rules is deployed.',
         );
-        await _db.collection('users').doc(uid).set({
-          ...user.toMap(),
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
       }
 
       _currentUser = user;
       _profileResolved = true;
       return user;
+    } catch (_) {
+      // Never leave a half signed-in session behind after a failure.
+      if (_currentUser == null) await _signOutEverywhere();
+      rethrow;
     } finally {
       _pendingAuth = false;
       notifyListeners();
     }
+  }
+
+  String _googlePlatformMessage(PlatformException e) {
+    final text = '${e.code} ${e.message ?? ''}';
+    if (text.contains('10') || text.contains('DEVELOPER_ERROR')) {
+      return 'Google sign-in is not configured for this build (error 10). Add this PC\'s debug SHA-1 '
+          'to the Android app in Firebase, download the new google-services.json, then run flutter clean.';
+    }
+    if (text.contains('7') || text.toLowerCase().contains('network')) {
+      return 'Google sign-in failed: no internet connection.';
+    }
+    return 'Google sign-in failed (${e.code}). ${e.message ?? ''}'.trim();
   }
 
   Future<void> logout() async {
