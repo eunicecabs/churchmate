@@ -190,15 +190,17 @@ class _EventsListScreenState extends State<EventsListScreen> {
                   style: AppButtonStyles.secondary.copyWith(minimumSize: const WidgetStatePropertyAll(Size(0, 40))),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pushNamed(context, AppRoutes.attendanceScanner, arguments: event.id),
-                  icon: const Icon(Icons.qr_code_scanner, size: 16),
-                  label: const Text('Scan QR'),
+              if (isLeader) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pushNamed(context, AppRoutes.attendanceScanner, arguments: event.id),
+                    icon: const Icon(Icons.qr_code_scanner, size: 16),
+                    label: const Text('Scan QR'),
                   style: AppButtonStyles.primary.copyWith(minimumSize: const WidgetStatePropertyAll(Size(0, 40))),
+                  ),
                 ),
-              ),
+              ],
             ]),
           ],
         ),

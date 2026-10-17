@@ -165,14 +165,26 @@ class EventDetailScreen extends StatelessWidget {
                                   style: AppTextStyles.bodySm),
                             ]),
                             const SizedBox(height: AppSpacing.sm),
+                            if (isLeader) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () =>
+                                      Navigator.pushNamed(context, AppRoutes.attendanceScanner, arguments: event.id),
+                                  icon: const Icon(Icons.qr_code_scanner, size: 16),
+                                  label: const Text('Scan QR'),
+                                  style: AppButtonStyles.primary,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                            ],
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
-                                onPressed: () =>
-                                    Navigator.pushNamed(context, AppRoutes.attendanceScanner, arguments: event.id),
-                                icon: const Icon(Icons.qr_code_scanner, size: 16),
-                                label: const Text('Scan QR'),
-                                style: AppButtonStyles.primary,
+                                onPressed: () => Navigator.pushNamed(context, AppRoutes.myPass),
+                                icon: const Icon(Icons.qr_code_2, size: 16),
+                                label: const Text('Show my check-in pass'),
+                                style: isLeader ? AppButtonStyles.secondary : AppButtonStyles.primary,
                               ),
                             ),
                             if (isLeader) ...[

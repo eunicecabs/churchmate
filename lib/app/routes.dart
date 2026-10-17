@@ -15,6 +15,7 @@ import '../features/library/screens/book_form_screen.dart';
 import '../features/finance/screens/finance_screen.dart';
 import '../features/finance/screens/transaction_form_screen.dart';
 import '../shared/widgets/leader_only.dart';
+import '../features/qr/screens/my_pass_screen.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -32,6 +33,7 @@ class AppRoutes {
   static const String transactionForm = '/transaction-form';
   static const String qrCreate = '/qr-create';
   static const String qrManagement = '/qr-management';
+  static const String myPass = '/my-pass';
 
   static Map<String, WidgetBuilder> routes = {
     login: (context) => const LoginScreen(),
@@ -41,7 +43,7 @@ class AppRoutes {
     events: (context) => const EventsListScreen(),
     eventDetail: (context) => const EventDetailScreen(),
     eventForm: (context) => const LeaderOnly(child: EventFormScreen()),
-    attendanceScanner: (context) => const AttendanceScannerScreen(),
+    attendanceScanner: (context) => const LeaderOnly(child: AttendanceScannerScreen()),
     library: (context) => const LibraryCatalogScreen(),
     bookDetail: (context) => const BookDetailScreen(),
     bookForm: (context) => const LeaderOnly(child: BookFormScreen()),
@@ -49,5 +51,6 @@ class AppRoutes {
     transactionForm: (context) => const LeaderOnly(child: TransactionFormScreen()),
     qrCreate: (context) => const LeaderOnly(child: QrCreateScreen()),
     qrManagement: (context) => const LeaderOnly(child: QrManagementScreen()),
+    myPass: (context) => const MyPassScreen(),
   };
 }

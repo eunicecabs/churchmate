@@ -31,24 +31,77 @@ class PersonScanService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   static final RegExp _qrIdPattern = RegExp(r'^(ELD|MEM)-\d{4,}$');
+  static final RegExp _userQrPattern = RegExp(r'^USR-[A-Za-z0-9]+$');
 
-  /// True when [raw] is an Elder/Member QR ID (as opposed to an event QR).
-  static bool isPersonQr(String raw) => _qrIdPattern.hasMatch(raw.trim().toUpperCase());
+  /// True when [raw] is a person QR: a printed Elder/Member ID, or a Youth
+  /// member's in-app pass ("USR-<account id>").
+  static bool isPersonQr(String raw) {
+    final t = raw.trim();
+    return _userQrPattern.hasMatch(t) || _qrIdPattern.hasMatch(t.toUpperCase());
+  }
 
   static String scannerRoleLabel(AppUser user) =>
       user.role == UserRole.leader ? 'Youth Leader' : 'Youth Member';
 
   Future<PersonScanResult> scan({required String rawCode, required AppUser scanner, String? eventId}) async {
-    final qrId = rawCode.trim().toUpperCase();
+    final trimmed = rawCode.trim();
+    final isUser = _userQrPattern.hasMatch(trimmed);
+
+    // Account IDs are case-sensitive, so only printed IDs are upper-cased.
+    final qrId = isUser ? trimmed : trimmed.toUpperCase();
+
     try {
-      final personDoc = await _db.collection('qrRegistry').doc(qrId).get();
-      if (!personDoc.exists) {
-        return const PersonScanResult(PersonScanStatus.notFound, 'This QR ID is not registered.');
-      }
-      final person = QrPerson.fromMap(personDoc.id, personDoc.data()!);
-      if (!person.active) {
-        return PersonScanResult(PersonScanStatus.inactive, 'This QR ID has been deactivated.',
-            personName: person.name, personRole: person.role);
+      final QrPerson person;
+
+      if (isUser) {
+        final userDoc = await _db
+            .collection('users')
+            .doc(qrId.substring(4))
+            .get();
+
+        if (!userDoc.exists) {
+          return const PersonScanResult(
+            PersonScanStatus.notFound,
+            'This member account was not found.',
+          );
+        }
+
+        final u = userDoc.data()!;
+        final fullName = (u['fullName'] as String? ?? '').trim();
+
+        person = QrPerson(
+          id: qrId,
+          name: fullName.isEmpty ? 'Unnamed member' : fullName,
+          role: u['role'] == UserRole.leader
+              ? 'Youth Leader'
+              : 'Youth Member',
+          qrId: qrId,
+          createdBy: '',
+        );
+      } else {
+        final personDoc =
+            await _db.collection('qrRegistry').doc(qrId).get();
+
+        if (!personDoc.exists) {
+          return const PersonScanResult(
+            PersonScanStatus.notFound,
+            'This QR ID is not registered.',
+          );
+        }
+
+        person = QrPerson.fromMap(
+          personDoc.id,
+          personDoc.data()!,
+        );
+
+        if (!person.active) {
+          return PersonScanResult(
+            PersonScanStatus.inactive,
+            'This QR ID has been deactivated.',
+            personName: person.name,
+            personRole: person.role,
+          );
+        }
       }
 
       final now = DateTime.now();
